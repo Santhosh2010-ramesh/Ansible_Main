@@ -1,0 +1,63 @@
+- name: Install and configure web server
+  hosts: webservers
+  become: yes
+  vars:
+    website_src: ./website/          # Local folder with your site content
+    website_dest: /var/www/html/     # Target directory on remote host
+
+  tasks:
+
+    - name: Install Apache on Ubuntu/Debian
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install HTTPD on RedHat/CentOS
+      yum:
+        name: httpd
+        state: present
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Get Apache version on Ubuntu/Debian
+      command: apache2 -v
+      register: apache_version
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Get HTTPD version on RedHat/CentOS
+      command: httpd -v
+      register: apache_version
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Display web server version
+      debug:
+        var: apache_version.stdout_lines
+
+    - name: Ensure destination directory exists
+      file:
+        path: "{{ website_dest }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy website content to remote host
+      copy:
+        src: "{{ website_src }}"
+        dest: "{{ website_dest }}"
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Start and enable Apache service on Ubuntu/Debian
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Start and enable HTTPD service on RedHat/CentOS
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+      when: ansible_facts['os_family'] == 'RedHat'
